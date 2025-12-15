@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import itertools
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 # ---------------------------
 # 1. Number of loci
@@ -62,13 +63,10 @@ gamma = np.zeros(n_pairs)
 
 # Then, for the selected epistatic pairs, sample: γᵢⱼ ~ Normal(0, σ²)
 # with σ = 0.15 → moderately strong epistasis.
+# returns gamma about between -0.45 and +0.45 in the vast majority of cases,
+# and most of it −0.15≤γ≤0.15 .
 sigma = 0.15
 gamma[epi_pairs_idx] = np.random.normal(0, sigma, epi_count)
-
-# Ensuring a mix of positive and negative interactions
-# by fliping the sign of ~50% of the epistatic values:
-mask = np.random.rand(epi_count) < 0.5  # half negative
-gamma[epi_pairs_idx[mask]] *= -1
 
 # store the interactions in a table df_epistasis.
 df_epistasis = pd.DataFrame({
@@ -82,10 +80,11 @@ df_epistasis = pd.DataFrame({
 # ---------------------------
 # Each individual has 100 loci, each with 0/1/2 copies of the risk allele.
 # Genotype probabilities:
-# - 0 alleles: 25%
-# - 1 allele: 50%
-# - 2 alleles: 25%
-# This simulates a realistic Hardy–Weinberg distribution.
+# - 0 alleles: 25% (p^2)
+# - 1 allele: 50% (2pq)
+# - 2 alleles: 25% (q^2)
+# This simulates a Hardy–Weinberg distribution, with p = 0.5
+# and q = 1 - p = 0.5.
 N = 100000
 genotypes = np.random.choice([0, 1, 2], size=(N, n_loci),
                              p=[0.25, 0.5, 0.25])
@@ -135,8 +134,25 @@ df_individuals = pd.DataFrame(genotypes, columns=[f"Locus_{i}" for i in range(n_
 df_individuals["logit"] = logit
 df_individuals["P(D)"] = P_D
 
+# ------------------------------------------
+# 10. Label top 2% as "sick" and others "healthy"
+# ------------------------------------------
+
+# Number of individuals to label as sick (top 2%)
+n_sick = int(0.02 * N)
+
+# Threshold: the P(D) value above which an individual is in top 2%
+threshold = np.sort(P_D)[-n_sick]
+
+# Create label column
+df_individuals["label"] = (df_individuals["P(D)"] >= threshold).astype(int)
+
+# label = 1 -> sick
+# label = 0 -> healthy
+
+
 # ---------------------------
-# 10. Printing example rows
+# 11. Printing example rows
 # ---------------------------
 print("\n--- df_betas (main effects) ---")
 print(df_betas.head())
@@ -147,10 +163,31 @@ print(df_epistasis.head())
 print("\n--- df_individuals (population table) ---")
 print(df_individuals.head())
 
+print("\nthreshold = ", threshold)
+
 # ---------------------------
-# 11. Plotting distributions
+# 12. Plotting distributions
 # ---------------------------
-# 1. Distribution of total PRS (with epistasis):
+# 1. Distribution of β_i (effects):
+plt.figure(figsize=(10, 6))
+sns.histplot(df_betas["beta"], bins=40, kde=True, color="blue", alpha=0.6)
+plt.title("Distribution of Main Effects βᵢ")
+plt.xlabel("βᵢ value")
+plt.ylabel("Frequency")
+plt.show()
+
+# 2. Distribution of γ_ij (epistatic effects):
+epi_nonzero = df_epistasis[df_epistasis["gamma"] != 0]["gamma"]
+
+plt.figure(figsize=(10, 6))
+sns.histplot(epi_nonzero, bins=40, kde=True, color="purple", alpha=0.6)
+plt.title("Distribution of Epistatic Effects γᵢⱼ  (non-zero only)")
+plt.xlabel("γᵢⱼ value")
+plt.ylabel("Frequency")
+plt.show()
+
+
+# 3. Distribution of total PRS (with epistasis):
 plt.figure(figsize=(10, 6))
 plt.hist(PRS_total, bins=50)
 plt.title("Distribution of total PRS (with epistasis)")
@@ -158,10 +195,26 @@ plt.xlabel("PRS_total")
 plt.ylabel("Frequency")
 plt.show()
 
-# 2. Distribution of disease probabilities P(D)
+# 4. Distribution of disease probabilities P(D)
 plt.figure(figsize=(10, 6))
 plt.hist(P_D, bins=50)
 plt.title("Distribution of disease probabilities P(D)")
 plt.xlabel("P(D)")
 plt.ylabel("Frequency")
+plt.show()
+
+# 5. Histograms
+plt.figure(figsize=(10, 6))
+sns.histplot(
+    data=df_individuals,
+    x="P(D)",
+    hue="label",
+    bins=40,
+    kde=True,
+    alpha=0.6
+)
+plt.title("Histogram of P(D) for Healthy vs Diseased")
+plt.xlabel("P(D)")
+plt.ylabel("Count")
+plt.legend(title="Label", labels=["Diseased (1)", "Healthy (0)"])
 plt.show()
