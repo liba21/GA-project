@@ -152,7 +152,7 @@ df_individuals["label"] = (df_individuals["P(D)"] >= threshold).astype(int)
 
 
 # ---------------------------
-# 11. Printing example rows
+# 11. Printing example rows and sending population to csv file
 # ---------------------------
 print("\n--- df_betas (main effects) ---")
 print(df_betas.head())
@@ -164,6 +164,11 @@ print("\n--- df_individuals (population table) ---")
 print(df_individuals.head())
 
 print("\nthreshold = ", threshold)
+
+df_individuals.to_csv("population.csv", index=False)
+df_betas.to_csv("real_betas.csv", index=False)
+df_epistasis.to_csv("real_epistasis.csv", index=False)
+
 
 # ---------------------------
 # 12. Plotting distributions
