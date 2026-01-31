@@ -111,6 +111,40 @@ df_gwas_results["p_adj"] = df_gwas_results["p_value"] * len(df_gwas_results)
 
 # save to file, index=False avoids adding row numbers
 df_gwas_results.to_csv("gwas_results.csv", index=False)
+'''
+#---------------------------------------
+# Part 2: Multivariate GWAS (joint model)
+#---------------------------------------
+
+X = df_gwas[locus_cols]
+X = sm.add_constant(X)
+y = df_gwas["label"]
+
+model = sm.Logit(y, X)
+
+try:
+    res = model.fit(disp=False)
+
+    results = []
+    for locus in locus_cols:
+        beta_hat = res.params[locus]
+        p_value = res.pvalues[locus]
+        OR = np.exp(beta_hat)
+
+        results.append({
+            "locus": locus,
+            "beta_hat": beta_hat,
+            "OR": OR,
+            "p_value": p_value
+        })
+
+except:
+    raise RuntimeError("Multivariate model failed to converge")
+
+df_gwas_results = pd.DataFrame(results)
+df_gwas_results["p_adj"] = df_gwas_results["p_value"] * len(df_gwas_results)
+df_gwas_results.to_csv("gwas_results.csv", index=False)
+'''
 
 #---------------------------------------
 # Part 3: Manhattan plot and Effect size vs statistical significance plot
@@ -136,22 +170,6 @@ plt.ylabel("-log10(p-value)")
 plt.title("Toy GWAS Manhattan Plot")
 plt.show()
 
-# Plot 2: Effect size vs statistical significance
-# shows the relationship between effect size and p-value.
-# X-axis: Estimated β
-# Y-axis: −log₁₀(p-value)
-# Red dashed line = Same Bonferroni threshold
-plt.figure(figsize=(10, 6))
-plt.scatter(
-    df_gwas_results["beta_hat"],
-    -np.log10(df_gwas_results["p_value"]),
-    alpha=0.7
-)
-plt.axhline(-np.log10(0.05 / len(df_gwas_results)), color="red", linestyle="--")
-plt.xlabel("Estimated β")
-plt.ylabel("-log10(p-value)")
-plt.title("Effect size vs significance")
-plt.show()
 
 #---------------------------------------
 # Part 4: beta comparison - 2 plots
@@ -179,7 +197,6 @@ df_compare = pd.merge(
     how="inner"
 )
 
-print(df_compare.head())
 
 # Plot 1: True vs Estimated β (colored by significance)
 # - Bright points ->  Highly significant loci
@@ -237,4 +254,10 @@ plt.xlabel("True β")
 plt.ylabel("Estimation error (β_hat − β_true)")
 plt.title("GWAS estimation error")
 plt.show()
+
+df_compare = df_compare[
+    ["locus_index", "beta_hat", "beta_true", "p_adj"]
+]
+df_compare.to_csv("beta_comparison.csv", index=False)
+print(df_compare.head())
 

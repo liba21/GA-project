@@ -50,7 +50,7 @@ df_betas = pd.DataFrame({"locus": np.arange(n_loci), "beta": betas})
 pairs = list(itertools.combinations(range(n_loci), 2))
 n_pairs = len(pairs)
 
-epi_count = int(n_pairs * 0.10)  # 10%
+epi_count = int(n_pairs * 0.1)  # 10% ~ 495 epistatic pairs --------------------------------------------- change here when want 0% epistasis
 # Out of all possible pairs, you sample 10% randomly to be "epistatic":
 # These are the pairs where γᵢⱼ ≠ 0.
 epi_pairs_idx = np.random.choice(np.arange(n_pairs), epi_count, replace=False)
@@ -86,8 +86,7 @@ df_epistasis = pd.DataFrame({
 # This simulates a Hardy–Weinberg distribution, with p = 0.5
 # and q = 1 - p = 0.5.
 N = 100000
-genotypes = np.random.choice([0, 1, 2], size=(N, n_loci),
-                             p=[0.25, 0.5, 0.25])
+genotypes = np.random.choice([0, 1, 2], size=(N, n_loci),  p=[0.25, 0.5, 0.25])
 
 # ---------------------------
 # 6. Calculating PRS without epistasis
@@ -108,20 +107,53 @@ for idx, (i, j) in enumerate(pairs):
         # and add it to the epistatic effect for each individual.
         epi_effect += gamma[idx] * genotypes[:, i] * genotypes[:, j]
 
-# Sum all interaction contributions → PRS_total.
+# the part that responsible to keep the ratio between the main effects contribution
+# to the epistasis contribution
+var_main = np.var(PRS)
+var_epi = np.var(epi_effect)
+
+def epistasis_scale(var_main, var_epi, epi_fraction):
+    """
+    var_main    : variance of main effects
+    var_epi     : variance of epistatic effects
+    epi_fraction: desired fraction of epistasis (0 < p < 1)
+    """
+    assert 0 < epi_fraction < 1, "epi_fraction must be between 0 and 1"
+    scale = np.sqrt((epi_fraction / (1 - epi_fraction)) * (var_main / var_epi))
+    return scale
+
+if var_epi > 0:
+    # target_ratio = 0.9 * var_main / var_epi
+    # scale = np.sqrt(target_ratio)
+    p = 0.3  # epistasis target ratio ---------------------------------------------------------change here to define epistasis ratio
+    scale = epistasis_scale(var_main, var_epi, p)
+
+    # Scale epistatic effects to control variance contribution
+    epi_effect *= scale
+    gamma *= scale
+    df_epistasis["gamma"] = gamma
+else:
+    # No epistasis → no scaling
+    scale = 1.0
+
+# Sum all interaction contributions → PRS_total
 PRS_total = PRS + epi_effect
 
 # ---------------------------
 # 8. Computing logit and P(D)
 # ---------------------------
-# begin with a baseline prevalence P0 and calculate alpha accordingly:
-p0 = 0.05
-alpha = np.log(p0 / (1 - p0))
 
-# later we will consider P0, and then we will do:
-# logit = alpha + PRS_total.
-logit = PRS_total
+# Center PRS_total
+PRS_total_centered = PRS_total - PRS_total.mean()
+
+# Set alpha for desired prevalence
+target_prev = 0.02 #---------------------------------------------------------------change here to control final deasise ratio
+alpha = np.log(target_prev / (1 - target_prev))
+
+# Logistic model
+logit = alpha + PRS_total_centered
 P_D = 1 / (1 + np.exp(-logit))
+phenotype = np.random.binomial(1, P_D)
 
 # ---------------------------
 # 9. Building the population table
@@ -133,11 +165,12 @@ P_D = 1 / (1 + np.exp(-logit))
 df_individuals = pd.DataFrame(genotypes, columns=[f"Locus_{i}" for i in range(n_loci)])
 df_individuals["logit"] = logit
 df_individuals["P(D)"] = P_D
+df_individuals["label"] = phenotype
 
 # ------------------------------------------
 # 10. Label top 2% as "sick" and others "healthy"
 # ------------------------------------------
-
+'''
 # Number of individuals to label as sick (top 2%)
 n_sick = int(0.02 * N)
 
@@ -149,7 +182,7 @@ df_individuals["label"] = (df_individuals["P(D)"] >= threshold).astype(int)
 
 # label = 1 -> sick
 # label = 0 -> healthy
-
+'''
 
 # ---------------------------
 # 11. Printing example rows and sending population to csv file
@@ -163,7 +196,11 @@ print(df_epistasis.head())
 print("\n--- df_individuals (population table) ---")
 print(df_individuals.head())
 
-print("\nthreshold = ", threshold)
+var_main = np.var(PRS)
+var_epi  = np.var(epi_effect)
+
+print("Main effects contribution:", var_main / (var_main + var_epi))
+print("Epistasis contribution:", var_epi / (var_main + var_epi))
 
 df_individuals.to_csv("population.csv", index=False)
 df_betas.to_csv("real_betas.csv", index=False)
@@ -223,3 +260,10 @@ plt.xlabel("P(D)")
 plt.ylabel("Count")
 plt.legend(title="Label", labels=["Diseased (1)", "Healthy (0)"])
 plt.show()
+
+num_total = len(df_individuals)
+num_cases = df_individuals["label"].sum()          # סך חולים
+num_controls = num_total - num_cases              # סך בריאים
+
+print(f"Cases: {num_cases} ({num_cases/num_total*100:.2f}%)")
+print(f"Controls: {num_controls} ({num_controls/num_total*100:.2f}%)")
