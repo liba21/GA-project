@@ -111,40 +111,6 @@ df_gwas_results["p_adj"] = df_gwas_results["p_value"] * len(df_gwas_results)
 
 # save to file, index=False avoids adding row numbers
 df_gwas_results.to_csv("gwas_results.csv", index=False)
-'''
-#---------------------------------------
-# Part 2: Multivariate GWAS (joint model)
-#---------------------------------------
-
-X = df_gwas[locus_cols]
-X = sm.add_constant(X)
-y = df_gwas["label"]
-
-model = sm.Logit(y, X)
-
-try:
-    res = model.fit(disp=False)
-
-    results = []
-    for locus in locus_cols:
-        beta_hat = res.params[locus]
-        p_value = res.pvalues[locus]
-        OR = np.exp(beta_hat)
-
-        results.append({
-            "locus": locus,
-            "beta_hat": beta_hat,
-            "OR": OR,
-            "p_value": p_value
-        })
-
-except:
-    raise RuntimeError("Multivariate model failed to converge")
-
-df_gwas_results = pd.DataFrame(results)
-df_gwas_results["p_adj"] = df_gwas_results["p_value"] * len(df_gwas_results)
-df_gwas_results.to_csv("gwas_results.csv", index=False)
-'''
 
 #---------------------------------------
 # Part 3: Manhattan plot and Effect size vs statistical significance plot
@@ -260,4 +226,97 @@ df_compare = df_compare[
 ]
 df_compare.to_csv("beta_comparison.csv", index=False)
 print(df_compare.head())
+#--------------------------------------------------------------
+#--------------------------------------------------------------
+
+def select_extreme_beta_loci(df_gwas_results):
+    locus_max_beta = df_gwas_results.loc[
+        df_gwas_results["beta_hat"].idxmax(), "locus"
+    ]
+
+    locus_min_beta = df_gwas_results.loc[
+        df_gwas_results["beta_hat"].idxmin(), "locus"
+    ]
+
+    return {
+        "Max betâ": locus_max_beta,
+        "Min betâ": locus_min_beta
+    }
+def genotype_label_proportions(df_individuals, locus):
+    data = []
+
+    # סך כל החולים והבריאים (קבועים לכל הגנוטיפים)
+    n_disease = (df_individuals["label"] == 1).sum()
+    n_healthy = (df_individuals["label"] == 0).sum()
+
+    for genotype in [0, 1, 2]:
+        n_disease_g = (
+            (df_individuals[locus] == genotype) &
+            (df_individuals["label"] == 1)
+        ).sum()
+
+        n_healthy_g = (
+            (df_individuals[locus] == genotype) &
+            (df_individuals["label"] == 0)
+        ).sum()
+
+        disease_prop = n_disease_g / n_disease if n_disease > 0 else np.nan
+        healthy_prop = n_healthy_g / n_healthy if n_healthy > 0 else np.nan
+
+        data.append((healthy_prop, disease_prop))
+
+    return data  # [(H0,D0), (H1,D1), (H2,D2)]
+
+def plot_loci_genotype_proportions(df_individuals, loci_dict):
+    genotypes = [0, 1, 2]
+    width = 0.25
+
+    plt.figure(figsize=(12, 6))
+
+    x_base = np.arange(len(loci_dict)) * 4  # רווח בין לוקוסים
+
+    for i, (label, locus) in enumerate(loci_dict.items()):
+        proportions = genotype_label_proportions(df_individuals, locus)
+
+        for j, genotype in enumerate(genotypes):
+            healthy_prop, disease_prop = proportions[j]
+
+            x_center = x_base[i] + j
+
+            plt.bar(
+                x_center - width / 2,
+                healthy_prop,
+                width,
+                label="Healthy" if (i == 0 and j == 0) else "",
+                color="tab:blue"
+            )
+
+            plt.bar(
+                x_center + width / 2,
+                disease_prop,
+                width,
+                label="Disease" if (i == 0 and j == 0) else "",
+                color="tab:red"
+            )
+
+    # X ticks
+    xticks = []
+    xtick_labels = []
+
+    for i, locus in enumerate(loci_dict.values()):
+        for g in genotypes:
+            xticks.append(x_base[i] + g)
+            xtick_labels.append(f"{locus}\nG={g}")
+
+    plt.xticks(xticks, xtick_labels, rotation=30)
+    plt.ylabel("Proportion")
+    plt.xlabel("Locus and genotype")
+    plt.title("Genotype proportions by phenotype for extreme beta loci")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+loci = select_extreme_beta_loci(df_gwas_results)
+plot_loci_genotype_proportions(df_individuals, loci)
+
+
 

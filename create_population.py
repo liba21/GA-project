@@ -4,11 +4,17 @@ import itertools
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# ---------------------------
-# 1. Number of loci
-# ---------------------------
+# ----------------------------------
+# Parameters
+# ----------------------------------
+target_prev = 0.02 #---------------------------------------------------------------change here to control final deasise ratio
 # set the number of genetic loci to 100
 n_loci = 100
+N = 100000
+
+maf_min = 0.02
+maf_max = 0.5
+maf_decay = 6.0   # controls how fast MAF decreases with |β|
 
 # ---------------------------
 # 2. Creating the main-effect table βᵢ
@@ -42,6 +48,13 @@ for i in range(n_loci):
 # Finally, you store everything in a pandas table df_betas.
 betas = np.array(betas)
 df_betas = pd.DataFrame({"locus": np.arange(n_loci), "beta": betas})
+
+# ----------------------------------
+# 2. Define MAF as a function of |β|
+# ----------------------------------
+abs_beta = np.abs(betas)
+maf = maf_min + (maf_max - maf_min) * np.exp(-maf_decay * abs_beta)
+maf = np.clip(maf, maf_min, maf_max)
 
 # ---------------------------
 # 3. Choosing 10% of all locus pairs to have epistasis
@@ -85,8 +98,16 @@ df_epistasis = pd.DataFrame({
 # - 2 alleles: 25% (q^2)
 # This simulates a Hardy–Weinberg distribution, with p = 0.5
 # and q = 1 - p = 0.5.
-N = 100000
-genotypes = np.random.choice([0, 1, 2], size=(N, n_loci),  p=[0.25, 0.5, 0.25])
+#genotypes = np.random.choice([0, 1, 2], size=(N, n_loci),  p=[0.25, 0.5, 0.25])
+genotypes = np.zeros((N, n_loci), dtype=int)
+
+for i in range(n_loci):
+    p = maf[i]
+    genotypes[:, i] = np.random.choice(
+        [0, 1, 2],
+        size=N,
+        p=[(1 - p) ** 2, 2 * p * (1 - p), p ** 2]
+    )
 
 # ---------------------------
 # 6. Calculating PRS without epistasis
@@ -147,7 +168,6 @@ PRS_total = PRS + epi_effect
 PRS_total_centered = PRS_total - PRS_total.mean()
 
 # Set alpha for desired prevalence
-target_prev = 0.02 #---------------------------------------------------------------change here to control final deasise ratio
 alpha = np.log(target_prev / (1 - target_prev))
 
 # Logistic model
@@ -167,22 +187,6 @@ df_individuals["logit"] = logit
 df_individuals["P(D)"] = P_D
 df_individuals["label"] = phenotype
 
-# ------------------------------------------
-# 10. Label top 2% as "sick" and others "healthy"
-# ------------------------------------------
-'''
-# Number of individuals to label as sick (top 2%)
-n_sick = int(0.02 * N)
-
-# Threshold: the P(D) value above which an individual is in top 2%
-threshold = np.sort(P_D)[-n_sick]
-
-# Create label column
-df_individuals["label"] = (df_individuals["P(D)"] >= threshold).astype(int)
-
-# label = 1 -> sick
-# label = 0 -> healthy
-'''
 
 # ---------------------------
 # 11. Printing example rows and sending population to csv file
