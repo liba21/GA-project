@@ -12,9 +12,9 @@ target_prev = 0.02 #------------------------------------------------------------
 n_loci = 100
 N = 100000
 
-maf_min = 0.02
-maf_max = 0.5
-maf_decay = 6.0   # controls how fast MAF decreases with |β|
+maf_min = 0.02 # Sets a minimum allele frequency of 2%.
+maf_max = 0.5 # Sets a maximum allele frequency of 50%.
+maf_decay = 6.0   # controls how fast MAF decreases with |β|.
 
 # ---------------------------
 # 2. Creating the main-effect table βᵢ
@@ -52,8 +52,11 @@ df_betas = pd.DataFrame({"locus": np.arange(n_loci), "beta": betas})
 # ----------------------------------
 # 2. Define MAF as a function of |β|
 # ----------------------------------
-abs_beta = np.abs(betas)
+abs_beta = np.abs(betas) # absolute value of β.
+# if β is small -> exp(0) = 1 -> MAF ≈ maf_max -> Common locus
+# if β is big -> exp(big number) = close to 0 -> MAF ≈ maf_min -> Rare locus
 maf = maf_min + (maf_max - maf_min) * np.exp(-maf_decay * abs_beta)
+# Ensures that values do not exceed the legal range.
 maf = np.clip(maf, maf_min, maf_max)
 
 # ---------------------------
@@ -93,12 +96,11 @@ df_epistasis = pd.DataFrame({
 # ---------------------------
 # Each individual has 100 loci, each with 0/1/2 copies of the risk allele.
 # Genotype probabilities:
-# - 0 alleles: 25% (p^2)
-# - 1 allele: 50% (2pq)
-# - 2 alleles: 25% (q^2)
-# This simulates a Hardy–Weinberg distribution, with p = 0.5
-# and q = 1 - p = 0.5.
-#genotypes = np.random.choice([0, 1, 2], size=(N, n_loci),  p=[0.25, 0.5, 0.25])
+# - 0 alleles: (1-p)^2 = (q^2)
+# - 1 allele: (2pq)
+# - 2 alleles: (p^2)
+# This simulates a Hardy–Weinberg distribution, with p = maf[i]
+# and q = 1 - p.
 genotypes = np.zeros((N, n_loci), dtype=int)
 
 for i in range(n_loci):
@@ -187,7 +189,6 @@ df_individuals["logit"] = logit
 df_individuals["P(D)"] = P_D
 df_individuals["label"] = phenotype
 
-
 # ---------------------------
 # 11. Printing example rows and sending population to csv file
 # ---------------------------
@@ -249,6 +250,7 @@ plt.xlabel("P(D)")
 plt.ylabel("Frequency")
 plt.show()
 
+
 # 5. Histograms
 plt.figure(figsize=(10, 6))
 sns.histplot(
@@ -271,3 +273,45 @@ num_controls = num_total - num_cases              # סך בריאים
 
 print(f"Cases: {num_cases} ({num_cases/num_total*100:.2f}%)")
 print(f"Controls: {num_controls} ({num_controls/num_total*100:.2f}%)")
+
+# ---------------------------
+# Calibration plot (deciles)
+# ---------------------------
+
+# יצירת עשירונים לפי P(D)
+df_individuals["decile"] = pd.qcut(df_individuals["P(D)"], 10, labels=False)
+
+# חישוב סטטיסטיקות לכל עשירון
+calibration = df_individuals.groupby("decile").agg(
+    mean_PD=("P(D)", "mean"),
+    disease_rate=("label", "mean")
+).reset_index()
+
+# ציור הגרף
+plt.figure(figsize=(7,7))
+
+plt.scatter(calibration["mean_PD"], calibration["disease_rate"], s=80)
+
+# גבולות לפי הנתונים
+xmin = calibration["mean_PD"].min()
+xmax = calibration["mean_PD"].max()
+
+ymin = calibration["disease_rate"].min()
+ymax = calibration["disease_rate"].max()
+
+# margin קטן כדי לא לחתוך נקודות בקצוות
+margin = 0.05 * (xmax - xmin)
+
+# קו קליברציה מושלם (מותאם לטווח)
+plt.plot([xmin, xmax], [xmin, xmax], linestyle="--")
+
+# הגדרת גבולות צירים עם margin
+plt.xlim(xmin - margin, xmax + margin)
+plt.ylim(ymin - margin, ymax + margin)
+
+plt.xlabel("Predicted probability P(D)")
+plt.ylabel("Observed disease rate")
+plt.title("Calibration plot (deciles)")
+
+plt.grid(alpha=0.3)
+plt.show()
