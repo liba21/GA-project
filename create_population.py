@@ -173,7 +173,7 @@ PRS_total_centered = PRS_total - PRS_total.mean()
 alpha = np.log(target_prev / (1 - target_prev))
 
 # Logistic model
-logit = alpha + PRS_total_centered
+logit = alpha + PRS_total_centered # multiplying the prs part of the logit-------------------------------------
 P_D = 1 / (1 + np.exp(-logit))
 phenotype = np.random.binomial(1, P_D)
 
@@ -185,6 +185,7 @@ phenotype = np.random.binomial(1, P_D)
 # - 1 column: logit
 # - 1 column: P(D)
 df_individuals = pd.DataFrame(genotypes, columns=[f"Locus_{i}" for i in range(n_loci)])
+df_individuals["PRS_total"] = PRS_total
 df_individuals["logit"] = logit
 df_individuals["P(D)"] = P_D
 df_individuals["label"] = phenotype
@@ -274,6 +275,7 @@ num_controls = num_total - num_cases              # סך בריאים
 print(f"Cases: {num_cases} ({num_cases/num_total*100:.2f}%)")
 print(f"Controls: {num_controls} ({num_controls/num_total*100:.2f}%)")
 
+"""
 # ---------------------------
 # Calibration plot (deciles)
 # ---------------------------
@@ -312,6 +314,51 @@ plt.ylim(ymin - margin, ymax + margin)
 plt.xlabel("Predicted probability P(D)")
 plt.ylabel("Observed disease rate")
 plt.title("Calibration plot (deciles)")
+
+plt.grid(alpha=0.3)
+plt.show()
+"""
+
+# ---------------------------
+# PRS vs disease rate (deciles)
+# ---------------------------
+
+# יצירת עשירונים לפי PRS_total
+df_individuals["decile"] = pd.qcut(df_individuals["PRS_total"], 10, labels=False)
+
+# חישוב סטטיסטיקות לכל עשירון
+calibration = df_individuals.groupby("decile").agg(
+    mean_PRS=("PRS_total", "mean"),
+    disease_rate=("label", "mean")
+).reset_index()
+
+# ציור הגרף
+plt.figure(figsize=(7,7))
+
+plt.scatter(calibration["mean_PRS"], calibration["disease_rate"], s=80)
+
+# גבולות לפי הנתונים
+xmin = calibration["mean_PRS"].min()
+xmax = calibration["mean_PRS"].max()
+
+ymin = calibration["disease_rate"].min()
+ymax = calibration["disease_rate"].max()
+
+# margin קטן כדי לא לחתוך נקודות בקצוות
+margin = 0.05 * (xmax - xmin)
+
+# קו לוגיסטי תיאורטי (לפי המודל שלך)
+#x_vals = np.linspace(xmin, xmax, 200)
+#y_vals = 1 / (1 + np.exp(-(alpha + x_vals)))
+#plt.plot(x_vals, y_vals, linestyle="--")
+
+# הגדרת גבולות צירים עם margin
+plt.xlim(xmin - margin, xmax + margin)
+plt.ylim(-0.01 , 0.25)
+
+plt.xlabel("PRS_total")
+plt.ylabel("Observed disease rate")
+plt.title("PRS vs disease rate (deciles)")
 
 plt.grid(alpha=0.3)
 plt.show()
