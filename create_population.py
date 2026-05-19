@@ -31,13 +31,13 @@ for i in range(n_loci):
     r = np.random.rand()
 
     if r < 0.6:  # Small effect
-        b = np.random.uniform(0.02, 0.08)
+        b = np.random.uniform(0.1, 0.2)
 
     elif r < 0.9:  # Medium effect
-        b = np.random.uniform(0.08, 0.20)
+        b = np.random.uniform(0.2, 0.5)
 
     else:  # Large effect
-        b = np.random.uniform(0.20, 0.40)
+        b = np.random.uniform(0.5, 1)
 
     # 50% protective
     if np.random.rand() < 0.5:
@@ -128,27 +128,32 @@ epi_effect = np.zeros(N)
 for idx, (i, j) in enumerate(pairs):
     if gamma[idx] != 0:
         # and add it to the epistatic effect for each individual.
-        epi_effect += gamma[idx] * genotypes[:, i] * genotypes[:, j]
+        #epi_effect += gamma[idx] * genotypes[:, i] * genotypes[:, j]
+        xi = genotypes[:, i] - np.mean(genotypes[:, i])
+        xj = genotypes[:, j] - np.mean(genotypes[:, j])
+
+        epi_term = xi * xj
+
+        # remove linear leakage (CRITICAL)
+        epi_term = epi_term - np.cov(xi, xj)[0, 1] / np.var(xi) * xi
+        epi_term = epi_term - np.cov(xi, xj)[0, 1] / np.var(xj) * xj
+
+        epi_effect += gamma[idx] * epi_term
+
 
 # the part that responsible to keep the ratio between the main effects contribution
 # to the epistasis contribution
 var_main = np.var(PRS)
 var_epi = np.var(epi_effect)
 
+
 def epistasis_scale(var_main, var_epi, epi_fraction):
-    """
-    var_main    : variance of main effects
-    var_epi     : variance of epistatic effects
-    epi_fraction: desired fraction of epistasis (0 < p < 1)
-    """
     assert 0 < epi_fraction < 1, "epi_fraction must be between 0 and 1"
     scale = np.sqrt((epi_fraction / (1 - epi_fraction)) * (var_main / var_epi))
     return scale
 
 if var_epi > 0:
-    # target_ratio = 0.9 * var_main / var_epi
-    # scale = np.sqrt(target_ratio)
-    p = 0.3  # epistasis target ratio ---------------------------------------------------------change here to define epistasis ratio
+    p = 0.1  # epistasis target ratio ---------------------------------------------------------change here to define epistasis ratio
     scale = epistasis_scale(var_main, var_epi, p)
 
     # Scale epistatic effects to control variance contribution
@@ -158,6 +163,8 @@ if var_epi > 0:
 else:
     # No epistasis → no scaling
     scale = 1.0
+
+#scale = 1.0
 
 # Sum all interaction contributions → PRS_total
 PRS_total = PRS + epi_effect
@@ -275,49 +282,6 @@ num_controls = num_total - num_cases              # סך בריאים
 print(f"Cases: {num_cases} ({num_cases/num_total*100:.2f}%)")
 print(f"Controls: {num_controls} ({num_controls/num_total*100:.2f}%)")
 
-"""
-# ---------------------------
-# Calibration plot (deciles)
-# ---------------------------
-
-# יצירת עשירונים לפי P(D)
-df_individuals["decile"] = pd.qcut(df_individuals["P(D)"], 10, labels=False)
-
-# חישוב סטטיסטיקות לכל עשירון
-calibration = df_individuals.groupby("decile").agg(
-    mean_PD=("P(D)", "mean"),
-    disease_rate=("label", "mean")
-).reset_index()
-
-# ציור הגרף
-plt.figure(figsize=(7,7))
-
-plt.scatter(calibration["mean_PD"], calibration["disease_rate"], s=80)
-
-# גבולות לפי הנתונים
-xmin = calibration["mean_PD"].min()
-xmax = calibration["mean_PD"].max()
-
-ymin = calibration["disease_rate"].min()
-ymax = calibration["disease_rate"].max()
-
-# margin קטן כדי לא לחתוך נקודות בקצוות
-margin = 0.05 * (xmax - xmin)
-
-# קו קליברציה מושלם (מותאם לטווח)
-plt.plot([xmin, xmax], [xmin, xmax], linestyle="--")
-
-# הגדרת גבולות צירים עם margin
-plt.xlim(xmin - margin, xmax + margin)
-plt.ylim(ymin - margin, ymax + margin)
-
-plt.xlabel("Predicted probability P(D)")
-plt.ylabel("Observed disease rate")
-plt.title("Calibration plot (deciles)")
-
-plt.grid(alpha=0.3)
-plt.show()
-"""
 
 # ---------------------------
 # PRS vs disease rate (deciles)

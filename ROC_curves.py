@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 df_individuals = pd.read_csv("population.csv")
 df_gwas = pd.read_csv("gwas_results.csv")
 
+"""
 # dictionary creation: locus -> beta_hat
 beta_hat_dict = dict(
     zip(df_gwas["locus"], df_gwas["beta_hat"])
@@ -15,6 +16,21 @@ PRS_gwas = np.zeros(len(df_individuals))
 
 for locus, beta_hat in beta_hat_dict.items():
     if not np.isnan(beta_hat):
+        PRS_gwas += df_individuals[locus] * beta_hat
+"""
+significant_snps = df_gwas[df_gwas["p_adj"] < 0.05]
+
+print(f"Number of significant SNPs: {len(significant_snps)}")
+
+PRS_gwas = np.zeros(len(df_individuals))
+
+for _, row in significant_snps.iterrows():
+
+    locus = row["locus"]
+    beta_hat = row["beta_hat"]
+
+    if not np.isnan(beta_hat):
+
         PRS_gwas += df_individuals[locus] * beta_hat
  #----------------------------------------------------------
 
