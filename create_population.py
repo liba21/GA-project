@@ -8,16 +8,19 @@ import seaborn as sns
 # Parameters
 # ----------------------------------
 target_prev = 0.02 #---------------------------------------------------------------change here to control final deasise ratio
-# set the number of genetic loci to 100
-n_loci = 100
+n_loci = 100 # the number of genetic loci
 N = 100000
 
 maf_min = 0.02 # Sets a minimum allele frequency of 2%.
 maf_max = 0.5 # Sets a maximum allele frequency of 50%.
 maf_decay = 6.0   # controls how fast MAF decreases with |β|.
 
+epi_fraction_pairs = 0.1
+epi_variance_fraction = 0.1
+sigma = 0.15
+
 # ---------------------------
-# 2. Creating the main-effect table βᵢ
+# 1. Creating the main-effect table βᵢ
 # ---------------------------
 # For each locus, you sample a random number r.
 # Based on r, you assign:
@@ -81,7 +84,7 @@ gamma = np.zeros(n_pairs)
 # with σ = 0.15 → moderately strong epistasis.
 # returns gamma about between -0.45 and +0.45 in the vast majority of cases,
 # and most of it −0.15≤γ≤0.15 .
-sigma = 0.15
+
 gamma[epi_pairs_idx] = np.random.normal(0, sigma, epi_count)
 
 # store the interactions in a table df_epistasis.
@@ -310,11 +313,6 @@ ymax = calibration["disease_rate"].max()
 
 # margin קטן כדי לא לחתוך נקודות בקצוות
 margin = 0.05 * (xmax - xmin)
-
-# קו לוגיסטי תיאורטי (לפי המודל שלך)
-#x_vals = np.linspace(xmin, xmax, 200)
-#y_vals = 1 / (1 + np.exp(-(alpha + x_vals)))
-#plt.plot(x_vals, y_vals, linestyle="--")
 
 # הגדרת גבולות צירים עם margin
 plt.xlim(xmin - margin, xmax + margin)
