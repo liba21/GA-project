@@ -93,11 +93,15 @@ def generate_epistasis(n_loci, epi_fraction_pairs, sigma):
 
     gamma = np.zeros(n_pairs)
 
+    #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     gamma[epi_pairs_idx] = np.random.normal(
         0,
         sigma,
         epi_count
     )
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # bring back after finishing the genetic algorithm!!!!!!!!!!!
+    # gamma[epi_pairs_idx] = 1.0
 
     df_epistasis = pd.DataFrame({
         "i": [pairs[k][0] for k in range(n_pairs)],
@@ -430,6 +434,14 @@ def main():
     df_individuals.to_csv("population.csv", index=False)
     df_betas.to_csv("real_betas.csv", index=False)
     df_epistasis.to_csv("real_epistasis.csv", index=False)
+    #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    #print(
+    #   np.unique(
+    #       df_epistasis[df_epistasis["gamma"] != 0]["gamma"]
+    #   )
+    #)
+    #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
     # plot functions:
     plot_beta_distribution(df_betas)
