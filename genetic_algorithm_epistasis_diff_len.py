@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import random
 from sklearn.metrics import roc_auc_score
-
+import time
 # =========================================================
 # LOAD DATA
 # =========================================================
@@ -67,11 +67,14 @@ print("Total true pairs:", len(true_gamma_map))
 # GA PARAMETERS
 # =========================================================
 
-POP_SIZE = 1000
-N_GENERATIONS = 400
+POP_SIZE = 2000
+N_GENERATIONS = 600
 
-TOURNAMENT_K = 5
-ELITE_SIZE = 10
+EARLY_STOP_TOL = 1e-5   # הפרש מקסימלי בין best ל-mean
+EARLY_STOP_PATIENCE = 8 # כמה דורות רצופים לפני עצירה
+
+TOURNAMENT_K = 4
+ELITE_SIZE = 5
 
 FIXED_SIZE = 125
 
@@ -80,6 +83,7 @@ MUTATION_GAMMA_PROB = 0.5
 
 GAMMA_MIN = -0.4
 GAMMA_MAX = 0.4
+run_number = 4
 
 # =========================================================
 # INITIAL POPULATION
@@ -151,6 +155,26 @@ def tournament_select(population, scores):
     best_idx = max(idxs, key=lambda i: scores[i])
 
     return population[best_idx]
+def rank_select(population, scores):
+
+    # Sort individuals from worst to best
+    ranked_indices = np.argsort(scores)
+
+    # Rank-based weights:
+    # worst = 1
+    # best = N
+    ranks = np.arange(1, len(population) + 1)
+
+    probabilities = ranks / ranks.sum()
+
+    selected_position = np.random.choice(
+        len(population),
+        p=probabilities
+    )
+
+    selected_idx = ranked_indices[selected_position]
+
+    return population[selected_idx]
 
 # =========================================================
 # CLEAN DUPLICATES
@@ -239,6 +263,9 @@ def crossover(parent1, parent2):
 best_solution = None
 best_score = -np.inf
 
+auc_history = []
+start_time = time.time()
+
 for gen in range(N_GENERATIONS):
 
     scores = [compute_fitness(ind) for ind in population]
@@ -246,6 +273,14 @@ for gen in range(N_GENERATIONS):
     best_idx = np.argmax(scores)
     gen_best = scores[best_idx]
     gen_mean = np.mean(scores)
+    # save history
+    auc_history.append(
+        {
+            "generation": gen,
+            "best_auc": gen_best,
+            "mean_auc": gen_mean
+        }
+    )
 
     if gen_best > best_score:
         best_score = gen_best
@@ -264,6 +299,47 @@ for gen in range(N_GENERATIONS):
         f"GammaErr={gamma_err:.4f}"
     )
 
+    # ===============================
+    # EARLY STOPPING
+    # ===============================
+
+    # ===============================
+    # EARLY STOPPING
+    # ===============================
+
+    if len(auc_history) >= EARLY_STOP_PATIENCE:
+
+        recent_best = [
+            row["best_auc"]
+            for row in auc_history[-EARLY_STOP_PATIENCE:]
+        ]
+
+        recent_mean = [
+            row["mean_auc"]
+            for row in auc_history[-EARLY_STOP_PATIENCE:]
+        ]
+
+        # Check whether Best AUC stayed stable
+        best_stable = all(
+            abs(recent_best[i] - recent_best[i - 1]) < EARLY_STOP_TOL
+            for i in range(1, len(recent_best))
+        )
+
+        # Check whether Mean AUC stayed stable
+        mean_stable = all(
+            abs(recent_mean[i] - recent_mean[i - 1]) < EARLY_STOP_TOL
+            for i in range(1, len(recent_mean))
+        )
+
+        if best_stable and mean_stable:
+            print(
+                f"\nEarly stopping at generation {gen}"
+                f" - Best and Mean AUC stable for "
+                f"{EARLY_STOP_PATIENCE} generations."
+            )
+
+            break
+
     # ELITISM
     elite_idx = np.argsort(scores)[-ELITE_SIZE:]
     new_population = [population[i] for i in elite_idx]
@@ -271,8 +347,10 @@ for gen in range(N_GENERATIONS):
     # REPRODUCTION
     while len(new_population) < POP_SIZE:
 
-        parent1 = tournament_select(population, scores)
-        parent2 = tournament_select(population, scores)
+        # parent1 = tournament_select(population, scores)
+        # parent2 = tournament_select(population, scores)
+        parent1 = rank_select(population, scores)
+        parent2 = rank_select(population, scores)
 
         child = crossover(parent1, parent2)
         child = mutate(child)
@@ -329,5 +407,51 @@ def export_true_pairs(best_solution, filename="best_solution_true_pairs.csv"):
 
     print(f"\nSaved {len(df_out)} true pairs to {filename}")
 
+# =========================================================
+# SAVE AUC HISTORY
+# =========================================================
+
+df_auc_history = pd.DataFrame(auc_history)
+
+df_auc_history.to_csv(
+    "GA_auc_history.csv",
+    index=False
+)
+
+print("\nSaved GA_auc_history.csv")
+
 # הפעלה על הפתרון הטוב ביותר
 export_true_pairs(best_solution)
+
+# =========================================================
+# save best solution to a different csv for 10 runs:
+# =========================================================
+
+found_pairs = [
+    [pair[0], pair[1], gamma]
+    for pair, gamma in best_solution
+]
+
+pd.DataFrame(
+    found_pairs,
+    columns=["i", "j", "gamma_pred"]
+).to_csv(
+    f"GA_run_{run_number}_pairs.csv",
+    index=False
+)
+
+# =========================================================
+# PRINT RUNTIME
+# =========================================================
+end_time = time.time()
+
+elapsed = end_time - start_time
+
+hours = int(elapsed // 3600)
+minutes = int((elapsed % 3600) // 60)
+seconds = elapsed % 60
+
+print(
+    f"\nTotal runtime: "
+    f"{hours:02d}:{minutes:02d}:{seconds:05.2f}"
+)
