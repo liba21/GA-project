@@ -2,11 +2,12 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
+import os
 
 # reading from the population file
-df_individuals = pd.read_csv("population.csv")
-df_betas = pd.read_csv("real_betas.csv")
-df_epistasis = pd.read_csv("real_epistasis.csv")
+df_individuals = pd.read_csv("../data/population.csv")
+df_betas = pd.read_csv("../data/real_betas.csv")
+df_epistasis = pd.read_csv("../data/real_epistasis.csv")
 
 #--------------------------------------
 # Part 1: Selection of variables for GWAS
@@ -110,7 +111,7 @@ df_gwas_results["p_adj"] = df_gwas_results["p_value"] * len(df_gwas_results)
 #df_gwas_results = df_gwas_results.sort_values("p_value")
 
 # save to file, index=False avoids adding row numbers
-df_gwas_results.to_csv("gwas_results.csv", index=False)
+df_gwas_results.to_csv("../results/GWAS/gwas_results.csv", index=False)
 
 #---------------------------------------
 # Part 3: Manhattan plot and Effect size vs statistical significance plot
@@ -134,6 +135,10 @@ plt.axhline(-np.log10(0.05 / len(df_gwas_results)), color="red", linestyle="--")
 plt.xlabel("Locus index")
 plt.ylabel("-log10(p-value)")
 plt.title("Toy GWAS Manhattan Plot")
+
+os.makedirs("../figures/GWAS", exist_ok=True)
+plt.savefig("../figures/GWAS/manhattan_plot.png", dpi=300, bbox_inches="tight")
+
 plt.show()
 
 
@@ -193,6 +198,10 @@ plt.plot(lims, lims, 'r--')
 plt.xlabel("True β")
 plt.ylabel("Estimated β")
 plt.title("True vs Estimated β (colored by significance)")
+
+os.makedirs("../figures/GWAS", exist_ok=True)
+plt.savefig("../figures/GWAS/true_vs_estimated_beta.png", dpi=300, bbox_inches="tight")
+
 plt.show()
 
 # Correlation between true and estimated β -
@@ -219,12 +228,16 @@ plt.axhline(0, color="red", linestyle="--")
 plt.xlabel("True β")
 plt.ylabel("Estimation error (β_hat − β_true)")
 plt.title("GWAS estimation error")
+
+os.makedirs("../figures/GWAS", exist_ok=True)
+plt.savefig("../figures/GWAS/gwas_estimation_error.png", dpi=300, bbox_inches="tight")
+
 plt.show()
 
 df_compare = df_compare[
     ["locus_index", "beta_hat", "beta_true", "p_adj"]
 ]
-df_compare.to_csv("beta_comparison.csv", index=False)
+df_compare.to_csv("../results/GWAS/beta_comparison.csv", index=False)
 print(df_compare.head())
 #--------------------------------------------------------------
 #--------------------------------------------------------------
@@ -273,7 +286,7 @@ def plot_loci_genotype_proportions(df_individuals, loci_dict):
 
     plt.figure(figsize=(12, 6))
 
-    x_base = np.arange(len(loci_dict)) * 4  # רווח בין לוקוסים
+    x_base = np.arange(len(loci_dict)) * 4  # Spacing between loci
 
     for i, (label, locus) in enumerate(loci_dict.items()):
         proportions = genotype_label_proportions(df_individuals, locus)
@@ -314,6 +327,10 @@ def plot_loci_genotype_proportions(df_individuals, loci_dict):
     plt.title("Genotype proportions by phenotype for extreme beta loci")
     plt.legend()
     plt.tight_layout()
+
+    os.makedirs("../figures/GWAS", exist_ok=True)
+    plt.savefig("../figures/GWAS/genotype_proportions_by_phenotype.png", dpi=300, bbox_inches="tight")
+
     plt.show()
 loci = select_extreme_beta_loci(df_gwas_results)
 plot_loci_genotype_proportions(df_individuals, loci)

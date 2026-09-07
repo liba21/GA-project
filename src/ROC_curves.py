@@ -2,14 +2,15 @@ from sklearn.metrics import roc_curve, roc_auc_score
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from genetic_utils import compute_epistasis_effect
+from src.genetic_utils import compute_epistasis_effect
+import os
 
 # ---------------------------------------------------------
 # Load data
 # ---------------------------------------------------------
-df_individuals = pd.read_csv("population.csv")
-df_gwas = pd.read_csv("gwas_results.csv")
-df_epistasis = pd.read_csv("real_epistasis.csv")
+df_individuals = pd.read_csv("../data/population.csv")
+df_gwas = pd.read_csv("../results/GWAS/gwas_results.csv")
+df_epistasis = pd.read_csv("../data/real_epistasis.csv")
 
 # -----------------------------------------
 # build genotype matrix
@@ -129,36 +130,11 @@ def compute_top_epistasis(
     )
 
     return epi_effect
-"""
-y_true = df_individuals["label"]
-y_score = PRS_gwas
-fpr, tpr, _ = roc_curve(y_true, y_score)
-auc = roc_auc_score(y_true, y_score)
 
-plt.figure(figsize=(7, 7))
-plt.plot(fpr, tpr, label=f"GWAS-PRS ROC (AUC = {auc:.3f})")
-plt.plot([0, 1], [0, 1], "k--", label="Random classifier")
-
-plt.xlabel("False Positive Rate")
-plt.ylabel("True Positive Rate")
-plt.title("ROC Curve based on GWAS-estimated PRS")
-plt.legend(loc="lower right")
-plt.grid(True)
-plt.show()
-
-# ROC using true PRS (with epistasis)
-auc_true = roc_auc_score(df_individuals["label"], df_individuals["logit"])
-
-# ROC using GWAS PRS
-auc_gwas = roc_auc_score(df_individuals["label"], PRS_gwas)
-
-print(f"AUC true model: {auc_true:.3f}")
-print(f"AUC GWAS PRS: {auc_gwas:.3f}")
-"""
 # ---------------------------------------------------------
 # Function 3: Evaluate ROC
 # ---------------------------------------------------------
-def evaluate_model(y_true, y_score, title="ROC Curve"):
+def evaluate_model(y_true, y_score, title="ROC Curve", filename="roc.png"):
 
     fpr, tpr, _ = roc_curve(y_true, y_score)
     auc = roc_auc_score(y_true, y_score)
@@ -175,6 +151,9 @@ def evaluate_model(y_true, y_score, title="ROC Curve"):
 
     plt.legend()
     plt.grid(True)
+
+    os.makedirs("../figures/GWAS", exist_ok=True)
+    plt.savefig(f"../figures/GWAS/{filename}", dpi=300, bbox_inches="tight")
 
     plt.show()
 
@@ -204,7 +183,8 @@ results = []
 auc_main = evaluate_model(
     y_true,
     prs_main,
-    title="ROC - GWAS PRS only"
+    title="ROC - GWAS PRS only",
+    filename="roc_gwas_only.png"
 )
 
 for frac in knowledge_levels:
@@ -260,7 +240,8 @@ prs_epi = prs_main + epi_effect
 auc_epi = evaluate_model(
     y_true,
     prs_epi,
-    title="ROC - GWAS + Epistasis"
+    title="ROC - GWAS + Epistasis",
+    filename="roc_with_epistasis.png"
 )
 
 plt.figure(figsize=(7,5))
@@ -283,6 +264,9 @@ plt.title(
 
 plt.grid(True)
 
+os.makedirs("../figures/GWAS", exist_ok=True)
+plt.savefig("../figures/GWAS/auc_with_epistasis.png", dpi=300, bbox_inches="tight")
+
 plt.show()
 
 # ---------------------------------------------------------
@@ -292,72 +276,7 @@ print("\n==============================")
 print(f"AUC GWAS only:       {auc_main:.3f}")
 print(f"AUC GWAS + epistasis:{auc_epi:.3f}")
 print("==============================")
-"""
-# ------------------------------------------------------------------------------------
-# recall and precision: 2 different ways to calculate them with different thresholds
-# ------------------------------------------------------------------------------------
-from sklearn.metrics import (
-    roc_curve,
-    precision_score,
-    recall_score,
-    precision_recall_curve,
-    average_precision_score
-)
-import numpy as np
-import matplotlib.pyplot as plt
 
-# ------------------------------------------------------------
-# Option 1: Threshold via ROC (Youden’s J)
-# ------------------------------------------------------------
-fpr, tpr, roc_thresholds = roc_curve(y_true, y_score)
-
-youden_index = tpr - fpr
-best_idx = np.argmax(youden_index)
-threshold_youden = roc_thresholds[best_idx]
-
-y_pred_youden = (y_score >= threshold_youden).astype(int)
-
-precision_youden = precision_score(y_true, y_pred_youden)
-recall_youden = recall_score(y_true, y_pred_youden)
-
-print("=== Threshold via Youden’s J ===")
-print(f"Threshold: {threshold_youden:.4f}")
-print(f"Precision: {precision_youden * 100:.2f}%")
-print(f"Recall:    {recall_youden * 100:.2f}%")
-
-# ------------------------------------------------------------
-# Precision–Recall Curve
-# ------------------------------------------------------------
-precision_curve, recall_curve, pr_thresholds = precision_recall_curve(
-    y_true, y_score
-)
-
-avg_precision = average_precision_score(y_true, y_score)
-
-plt.figure(figsize=(7, 6))
-plt.plot(
-    recall_curve,
-    precision_curve,
-    label=f"PRS (AP = {avg_precision:.3f})"
-)
-
-# Mark the two operating points
-plt.scatter(
-    recall_youden,
-    precision_youden,
-    color="red",
-    label="Youden threshold",
-    zorder=3
-)
-
-plt.xlabel("Recall")
-plt.ylabel("Precision")
-plt.title("Precision–Recall Curve (GWAS PRS)")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.show()
-"""
 
 
 

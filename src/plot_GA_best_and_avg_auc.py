@@ -1,13 +1,13 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-
+import os
 
 # ==============================
 # LOAD DATA
 # ==============================
 
 df = pd.read_csv(
-    "GA_auc_history.csv"
+    "../results/GA/GA_auc_history.csv"
 )
 
 
@@ -50,5 +50,8 @@ plt.title(
 plt.legend()
 
 plt.grid(True)
+
+os.makedirs("../figures/GA", exist_ok=True)
+plt.savefig("../figures/GA/GA_best_and_avg_auc.png", dpi=300, bbox_inches="tight")
 
 plt.show()

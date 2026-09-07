@@ -7,9 +7,9 @@ import time
 # LOAD DATA
 # =========================================================
 
-df_individuals = pd.read_csv("population.csv")
-df_gwas = pd.read_csv("gwas_results.csv")
-df_real = pd.read_csv("real_epistasis.csv")
+df_individuals = pd.read_csv("../data/population.csv")
+df_gwas = pd.read_csv("../results/GWAS/gwas_results.csv")
+df_real = pd.read_csv("../data/real_epistasis.csv")
 
 locus_cols = [c for c in df_individuals.columns if c.startswith("Locus_")]
 genotypes = df_individuals[locus_cols].values
@@ -83,7 +83,7 @@ MUTATION_GAMMA_PROB = 0.5
 
 GAMMA_MIN = -0.4
 GAMMA_MAX = 0.4
-run_number = 4
+run_number = 6
 
 # =========================================================
 # INITIAL POPULATION
@@ -378,13 +378,13 @@ print("Final Gamma Error:", final_gamma_err)
 # =========================================================
 import csv
 
-def export_true_pairs(best_solution, filename="best_solution_true_pairs.csv"):
+def export_true_pairs(best_solution, filename="../results/GA/best_solution_true_pairs.csv"):
 
     rows = []
 
     for pair, gamma_pred in best_solution:
 
-        # רק זוגות אמיתיים
+        # only true pairs
         if pair in true_gamma_map:
 
             gamma_true = true_gamma_map[pair]
@@ -397,7 +397,7 @@ def export_true_pairs(best_solution, filename="best_solution_true_pairs.csv"):
                 abs(gamma_pred - gamma_true)
             ])
 
-    # שמירה ל-CSV
+    # save to CSV
     df_out = pd.DataFrame(
         rows,
         columns=["i", "j", "gamma_pred", "gamma_true", "abs_error"]
@@ -414,13 +414,13 @@ def export_true_pairs(best_solution, filename="best_solution_true_pairs.csv"):
 df_auc_history = pd.DataFrame(auc_history)
 
 df_auc_history.to_csv(
-    "GA_auc_history.csv",
+    "../results/GA/GA_auc_history.csv",
     index=False
 )
 
 print("\nSaved GA_auc_history.csv")
 
-# הפעלה על הפתרון הטוב ביותר
+# Operating on the best solution
 export_true_pairs(best_solution)
 
 # =========================================================
@@ -436,7 +436,7 @@ pd.DataFrame(
     found_pairs,
     columns=["i", "j", "gamma_pred"]
 ).to_csv(
-    f"GA_run_{run_number}_pairs.csv",
+    f"../results/GA/GA_run_{run_number}_pairs.csv",
     index=False
 )
 

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import itertools
+import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 from genetic_utils import compute_epistasis_effect
@@ -220,6 +221,9 @@ def plot_beta_distribution(df_betas):
     plt.xlabel("βᵢ value")
     plt.ylabel("Frequency")
 
+    os.makedirs("../figures/population", exist_ok=True)
+    plt.savefig("../figures/population/beta_distribution.png", dpi=300, bbox_inches="tight")
+
     plt.show()
 
 
@@ -242,6 +246,9 @@ def plot_epistasis_distribution(epi_nonzero):
     plt.xlabel("γᵢⱼ value")
     plt.ylabel("Frequency")
 
+    os.makedirs("../figures/population", exist_ok=True)
+    plt.savefig("../figures/population/epistasis_distribution.png", dpi=300, bbox_inches="tight")
+
     plt.show()
 
 
@@ -259,6 +266,9 @@ def plot_prs_distribution(PRS_total):
     plt.xlabel("PRS_total")
     plt.ylabel("Frequency")
 
+    os.makedirs("../figures/population", exist_ok=True)
+    plt.savefig("../figures/population/total_prs_distribution.png", dpi=300, bbox_inches="tight")
+
     plt.show()
 
 
@@ -275,6 +285,9 @@ def plot_probability_distribution(P_D):
     plt.title("Distribution of disease probabilities P(D)")
     plt.xlabel("P(D)")
     plt.ylabel("Frequency")
+
+    os.makedirs("../figures/population", exist_ok=True)
+    plt.savefig("../figures/population/disease_probability_distribution.png", dpi=300, bbox_inches="tight")
 
     plt.show()
 
@@ -304,6 +317,9 @@ def plot_probability_by_label(df_individuals):
         title="Label",
         labels=["Diseased (1)", "Healthy (0)"]
     )
+
+    os.makedirs("../figures/population", exist_ok=True)
+    plt.savefig("../figures/population/disease_probability_by_label.png", dpi=300, bbox_inches="tight")
 
     plt.show()
 
@@ -375,6 +391,9 @@ def plot_prs_vs_disease_rate(df_individuals):
 
     plt.grid(alpha=0.3)
 
+    os.makedirs("../figures/population", exist_ok=True)
+    plt.savefig("../figures/population/prs_vs_disease_rate.png", dpi=300, bbox_inches="tight")
+
     plt.show()
 
 # ----------------------------------
@@ -431,17 +450,9 @@ def main():
         n_loci
     )
 
-    df_individuals.to_csv("population.csv", index=False)
-    df_betas.to_csv("real_betas.csv", index=False)
-    df_epistasis.to_csv("real_epistasis.csv", index=False)
-    #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    #print(
-    #   np.unique(
-    #       df_epistasis[df_epistasis["gamma"] != 0]["gamma"]
-    #   )
-    #)
-    #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+    df_individuals.to_csv("../data/population.csv", index=False)
+    df_betas.to_csv("../data/real_betas.csv", index=False)
+    df_epistasis.to_csv("../data/real_epistasis.csv", index=False)
 
     # plot functions:
     plot_beta_distribution(df_betas)
@@ -461,11 +472,6 @@ def main():
     print_case_control_stats(df_individuals)
 
     plot_prs_vs_disease_rate(df_individuals)
-
-
-
-
-
 
 if __name__ == "__main__":
     main()

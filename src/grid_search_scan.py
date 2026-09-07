@@ -2,14 +2,15 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score
+import os
 
 # =========================================================
 # LOAD DATA
 # =========================================================
 
-df_individuals = pd.read_csv("population.csv")
-df_gwas = pd.read_csv("gwas_results.csv")
-df_real = pd.read_csv("real_epistasis.csv")
+df_individuals = pd.read_csv("../data/population.csv")
+df_gwas = pd.read_csv("../results/GWAS/gwas_results.csv")
+df_real = pd.read_csv("../data/real_epistasis.csv")
 
 locus_cols = [c for c in df_individuals.columns if c.startswith("Locus_")]
 y_true = df_individuals["label"].values
@@ -131,7 +132,7 @@ df_results = pd.DataFrame(
 )
 
 df_results.to_csv(
-    "grid_search_scan_all_pairs.csv",
+    "../results/statistical_methods/grid_search_scan_all_pairs.csv",
     index=False
 )
 
@@ -145,7 +146,7 @@ df_top = df_results.sort_values(
 ).head(125)
 
 df_top.to_csv(
-    "grid_search_scan_top125.csv",
+    "../results/statistical_methods/grid_search_scan_top125.csv",
     index=False
 )
 
@@ -156,7 +157,7 @@ df_top.to_csv(
 df_top_true = df_top[df_top["is_true"] == True].copy()
 
 df_top_true.to_csv(
-    "grid_search_scan_top125_true_pairs.csv",
+    "../results/statistical_methods/grid_search_scan_top125_true_pairs.csv",
     index=False
 )
 
@@ -182,7 +183,7 @@ print("Mean Gamma Error:", mean_gamma_error)
 
 if len(df_top_true) > 0:
 
-    # מזהה לכל זוג
+    # ID for each pair
     df_plot = df_top_true.copy()
 
     df_plot["pair_id"] = (
@@ -191,7 +192,7 @@ if len(df_top_true) > 0:
         + df_plot["j"].astype(str)
     )
 
-    # מיון לפי gamma אמיתי
+    # Sort by true gamma
     df_plot = df_plot.sort_values(
         "gamma_true"
     ).reset_index(drop=True)
@@ -216,7 +217,7 @@ if len(df_top_true) > 0:
         alpha=0.8
     )
 
-    # קווים בין האמת לניבוי
+    # Lines between truth and prediction
     for idx in range(len(df_plot)):
         plt.plot(
             [x[idx], x[idx]],
@@ -241,6 +242,10 @@ if len(df_top_true) > 0:
 
     plt.legend()
     plt.tight_layout()
+
+    os.makedirs("../figures/statistical_methods", exist_ok=True)
+    plt.savefig("../figures/statistical_methods/grid_search_scan.png", dpi=300, bbox_inches="tight")
+
     plt.show()
 
 else:

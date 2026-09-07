@@ -1,17 +1,18 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 # =========================================================
 # LOAD DATA
 # =========================================================
 
-df = pd.read_csv("best_solution_true_pairs.csv")
+df = pd.read_csv("../results/GA/best_solution_true_pairs.csv")
 
-# יצירת מזהה לכל זוג (לציר X)
+# Create an ID for each pair (for the X axis)
 df["pair_id"] = df["i"].astype(str) + "," + df["j"].astype(str)
 
-# מיון כדי שהגרף יהיה יציב
+# Sorting to make the graph stable
 df = df.sort_values("gamma_true").reset_index(drop=True)
 
 x = np.arange(len(df))
@@ -22,7 +23,7 @@ x = np.arange(len(df))
 
 plt.figure(figsize=(16, 6))
 
-# גמא אמיתי
+# true gamma
 plt.scatter(
     x,
     df["gamma_true"],
@@ -30,7 +31,7 @@ plt.scatter(
     alpha=0.8
 )
 
-# גמא שנלמד
+# estimated gamma
 plt.scatter(
     x,
     df["gamma_pred"],
@@ -38,7 +39,7 @@ plt.scatter(
     alpha=0.8
 )
 
-# חיבור קווים בין אמת לניבוי (נותן תחושת error)
+# Connecting lines between truth and prediction
 for i in range(len(df)):
     plt.plot(
         [x[i], x[i]],
@@ -57,5 +58,8 @@ plt.ylabel("Gamma effect size")
 plt.title("True vs Predicted Epistatic Effects (Best GA Solution)")
 plt.legend()
 plt.tight_layout()
+
+os.makedirs("../figures/GA", exist_ok=True)
+plt.savefig("../figures/GA/final_found_pairs_graph.png", dpi=300, bbox_inches="tight")
 
 plt.show()

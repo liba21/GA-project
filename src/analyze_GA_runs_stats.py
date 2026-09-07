@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 
 # =========================================================
@@ -11,18 +12,19 @@ RUN_FILES = [
     "GA_run_1_pairs.csv",
     "GA_run_2_pairs.csv",
     "GA_run_3_pairs.csv",
-    "GA_run_4_pairs.csv"
+    "GA_run_4_pairs.csv",
+    "GA_run_5_pairs.csv",
+    "GA_run_6_pairs.csv"
 ]
 
-OUTPUT_CSV = "pair_detection_statistics.csv"
-OUTPUT_PLOT = "pair_detection_statistics.png"
+OUTPUT_CSV = "../results/GA/pair_detection_statistics.csv"
 
 
 # =========================================================
 # LOAD TRUE EPISTASIS
 # =========================================================
 
-df_real = pd.read_csv("real_epistasis.csv")
+df_real = pd.read_csv("../data/real_epistasis.csv")
 
 # Keep only true epistatic pairs (gamma != 0)
 df_true = df_real[df_real["gamma"] != 0].copy()
@@ -220,11 +222,9 @@ plt.xticks([])
 
 plt.tight_layout()
 
-plt.savefig(
-    OUTPUT_PLOT,
-    dpi=300
-)
+os.makedirs("../figures/GA", exist_ok=True)
+plt.savefig("../figures/GA/GA_runs_stats.png", dpi=300, bbox_inches="tight")
 
 plt.show()
 
-print(f"Saved plot to: {OUTPUT_PLOT}")
+print("Saved plot to: ../figures/GA/GA_runs_stats.png")
